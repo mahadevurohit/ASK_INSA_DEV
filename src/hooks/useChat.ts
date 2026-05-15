@@ -3,7 +3,7 @@ import { Message, UserInfo, QuickAction } from "@/types/chat";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const CHAT_URL = "/api/chat";
 
 const quickActionMessages: Record<string, string> = {
   join_insa: "I want to join INSA. Please show me the registration link.",
@@ -117,8 +117,7 @@ export const useChat = (userInfo: UserInfo) => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({
