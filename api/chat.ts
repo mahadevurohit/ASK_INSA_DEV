@@ -146,7 +146,7 @@ Always include direct clickable links to ${university}'s support services when r
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.0-flash",
+          model: "gemma-4-26b-a4b-it",
           messages: [
             { role: "system", content: personalizedPrompt },
             ...messages,
