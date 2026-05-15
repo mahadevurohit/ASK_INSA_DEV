@@ -5,6 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = "/api/chat";
 
+// Strip Gemma's internal <think>...</think> chain-of-thought before showing to users
+const stripThinkingContent = (content: string): string => {
+  // Remove complete <think>...</think> blocks (handles multi-line)
+  let cleaned = content.replace(/\s*<think>[\s\S]*?<\/think>\s*/g, "");
+  // If there is an unclosed <think> (still mid-thought), hide from that point onward
+  const openIdx = cleaned.indexOf("<think>");
+  if (openIdx !== -1) {
+    cleaned = cleaned.slice(0, openIdx);
+  }
+  return cleaned.trim();
+};
+
 const quickActionMessages: Record<string, string> = {
   join_insa: "I want to join INSA. Please show me the registration link.",
   volunteer: "I'm interested in volunteering with INSA. How can I help?",
@@ -182,23 +194,27 @@ export const useChat = (userInfo: UserInfo) => {
             const deltaContent = parsed.choices?.[0]?.delta?.content;
             if (deltaContent) {
               assistantContent += deltaContent;
-              setMessages(prev => {
-                const lastMsg = prev[prev.length - 1];
-                if (lastMsg?.role === "assistant" && lastMsg.id === assistantId) {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                  );
-                }
-                return [
-                  ...prev,
-                  {
-                    id: assistantId,
-                    role: "assistant",
-                    content: assistantContent,
-                    timestamp: new Date()
+              const displayContent = stripThinkingContent(assistantContent);
+              // Only update state when there is real visible content (skip pure thinking phase)
+              if (displayContent) {
+                setMessages(prev => {
+                  const lastMsg = prev[prev.length - 1];
+                  if (lastMsg?.role === "assistant" && lastMsg.id === assistantId) {
+                    return prev.map((m, i) =>
+                      i === prev.length - 1 ? { ...m, content: displayContent } : m
+                    );
                   }
-                ];
-              });
+                  return [
+                    ...prev,
+                    {
+                      id: assistantId,
+                      role: "assistant",
+                      content: displayContent,
+                      timestamp: new Date()
+                    }
+                  ];
+                });
+              }
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;
@@ -207,9 +223,10 @@ export const useChat = (userInfo: UserInfo) => {
         }
       }
 
-      // Save assistant message to database after streaming is complete
+      // Save clean (thinking-stripped) content to database after streaming is complete
       if (assistantContent) {
-        saveMessage("assistant", assistantContent);
+        const cleanContent = stripThinkingContent(assistantContent);
+        if (cleanContent) saveMessage("assistant", cleanContent);
       }
     } catch (error) {
       console.error("Chat error:", error);

@@ -18,7 +18,7 @@ const Index = () => {
     <div className="flex flex-col h-screen bg-background">
       <Header />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {!isOnboarded ? (
           <OnboardingFlow onComplete={handleOnboardingComplete} />
         ) : (
